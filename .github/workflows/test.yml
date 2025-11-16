@@ -1,0 +1,25 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 30
+      arrivalRate: 20
+scenarios:
+  - flow:
+      - loop: 
+        - post:
+            url: "/client"
+            json:
+              name: "TestUser"
+              country: "Colombia"
+              monthlyIncome: 1500
+              viseClub: true
+              cardType: "Platinum"
+        - post:
+            url: "/purchase"
+            json:
+              clientId: 601
+              amount: 200
+              currency: "USD"
+              purchaseDate: "2025-09-20T14:30:00Z"
+              purchaseCountry: "France"
+          count: 100

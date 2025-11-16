@@ -1,0 +1,80 @@
+name: Build and test VISE API
+
+on:
+  workflow_dispatch:
+    inputs:
+      PORT:
+        description: 'Host port to map to the API container (example: 3000)'
+        required: true
+        default: "3000"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Debug - list repo files
+        run: |
+          echo "PWD: $(pwd)"
+          echo "Files in repo root:"
+          ls -la
+          echo "Tree (depth 2):"
+          find . -maxdepth 2 -print || true
+          echo "Search for Dockerfile(s):"
+          find . -type f -iname 'dockerfile' -o -iname 'DockerFile' -o -iname 'Dockerfile' -maxdepth 4 || true
+
+      - name: Setup docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build frontend image (if needed)
+        run: |
+          # Ajusta la ruta si tu frontend está en otra carpeta
+          docker build -f ./frontend/Dockerfile -t vise-frontend:latest ./frontend
+
+      - name: Build API image
+        run: |
+          # Construye la imagen de la API desde la carpeta vise-api
+          docker build -f ./vise-api/Dockerfile -t vise-api:latest ./vise-api
+
+      - name: Run API container
+        run: |
+          # Variables
+          PORT="${{ github.event.inputs.PORT }}"
+          CONTAINER_NAME="vise-api-ci"
+
+          # Elimina contenedor anterior si existe
+          if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+            docker rm -f ${CONTAINER_NAME} || true
+          fi
+
+          # Ejecuta el contenedor mapeando el puerto (host:container)
+          # Si tu Dockerfile EXPOSE un puerto distinto dentro del contenedor,
+          # reemplaza :${PORT} a :<PUERTO_INTERNO> (ej: 8080)
+          docker run -d --name ${CONTAINER_NAME} -p "${PORT}:${PORT}" vise-api:latest
+
+          # Espera a que la API esté arriba (ajusta si necesitas más tiempo)
+          echo "Esperando 5s para que el contenedor inicie..."
+          sleep 5
+
+      - name: Setup hurl (API testing tool)
+        uses: gacts/install-hurl@v1
+
+      - name: Test API with hurl
+        run: |
+          PORT="${{ github.event.inputs.PORT }}"
+          # Ajusta la ruta a session.hurl si no está en la raíz
+          if [ ! -f ./session.hurl ]; then
+            echo "ERROR: session.hurl not found in repo root. Ajusta la ruta en el workflow."
+            exit 1
+          fi
+          hurl --variable host=http://localhost:${PORT} --error-format long --test ./session.hurl
+
+      - name: Cleanup - stop and remove container
+        if: always()
+        run: |
+          CONTAINER_NAME="vise-api-ci"
+          if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+            docker rm -f ${CONTAINER_NAME} || true
+          fi

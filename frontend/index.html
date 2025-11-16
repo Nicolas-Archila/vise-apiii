@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VISE – Frontend mejorado</title>
+  <!-- Importa una tipografía de Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    /* Variables CSS (colores, fondos, radios, tamaños) */
+    :root{
+      --bg: #0f1724; /* Fondo general de la página */
+      --card: linear-gradient(180deg,#0b1220 0%, #08101a 100%);
+      --muted: #94a3b8; /* Texto atenuado */
+      --glass: rgba(255,255,255,0.04); /* Efecto cristal */
+      --accent: #6ee7b7; /* Color acento */
+      --danger: #fb7185; /* Color de error/peligro */
+      --radius: 12px; /* Bordes redondeados */
+      --maxw: 1150px; /* Ancho máximo */
+    }
+
+    /* Tema claro, se activa con el botón de "Tema" */
+    .light { --bg:#f6f9fc; --card: linear-gradient(180deg,#ffffff,#fbfdff); --muted:#6b7280; --glass: rgba(0,0,0,0.03); --accent:#0ea5a6; }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;}
+    body{
+      font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+      margin:0; padding:28px;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(14,165,166,0.06), transparent), var(--bg);
+      color: #e6eef6;
+      display:flex; justify-content:center;
+    }
+
+    /* Contenedor principal */
+    .wrap{width:100%; max-width:var(--maxw);}
+
+    /* Cabecera con logo y botones */
+    header{display:flex; align-items:center; gap:16px; margin-bottom:20px}
+    .logo{display:flex; align-items:center; gap:12px}
+    .logo .mark{width:44px; height:44px; border-radius:10px; background:linear-gradient(135deg,#06b6d4,#7c3aed); display:grid; place-items:center; font-weight:800}
+    h1{font-size:20px;margin:0}
+    p.lead{margin:2px 0 0; color:var(--muted); font-size:13px}
+
+    .top-controls{margin-left:auto; display:flex; gap:8px; align-items:center}
+    .chip{background:var(--glass); border-radius:999px; padding:8px 12px; font-size:13px; color:var(--muted)}
+    .btn{background:transparent; border:1px solid rgba(255,255,255,0.06); padding:8px 12px; border-radius:10px; cursor:pointer; color:inherit}
+
+    /* Layout principal: izquierda API, derecha respuesta */
+    main{display:grid; grid-template-columns: 1fr 420px; gap:18px}
+
+    /* Paneles y tarjetas */
+    .panel{background:var(--card); border-radius:var(--radius); padding:18px; box-shadow:0 6px 20px rgba(2,6,23,0.6); border:1px solid rgba(255,255,255,0.02)}
+    .cards{display:grid; grid-template-columns: 1fr 1fr; gap:14px}
+    .card-title{display:flex; justify-content:space-between; align-items:center; gap:8px}
+    label.small{font-size:12px;color:var(--muted);margin-bottom:8px;display:block}
+
+    /* Área de texto para JSON */
+    textarea.json{width:100%; min-height:160px; resize:vertical; background:transparent; border:1px dashed rgba(255,255,255,0.04); padding:12px; border-radius:8px; color:inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace}
+
+    /* Controles de botones */
+    .controls{display:flex; gap:8px; margin-top:10px}
+    .controls button{flex:0;}
+
+    .accent{background:linear-gradient(90deg,#06b6d4,#7c3aed); color:#06111b}
+    .danger{background:var(--danger); color:white}
+
+    /* Columna derecha */
+    .right-col{display:flex; flex-direction:column; gap:14px}
+    .meta{display:flex; gap:8px; align-items:center; justify-content:space-between}
+
+    /* Área de salida (respuesta API) */
+    pre#out{white-space:pre-wrap; overflow:auto; max-height:420px; background:linear-gradient(#011826, #071a24); padding:12px; border-radius:8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace}
+
+    .small-muted{font-size:12px;color:var(--muted)}
+
+    footer{margin-top:18px; font-size:12px; color:var(--muted)}
+
+    /* Responsive: en pantallas pequeñas, todo en una columna */
+    @media (max-width:1000px){ main{grid-template-columns:1fr} }
+
+    /* Helpers de utilidad */
+    .row{display:flex; gap:8px}
+    .flex{display:flex}
+    .grow{flex:1}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, monospace}
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <!-- Logo y título -->
+      <div class="logo">
+        <div class="mark">V</div>
+        <div>
+          <h1>VISE — Frontend mejorado</h1>
+          <p class="lead">Cliente de prueba para <code>/api</code> — Nginx → backend:3000</p>
+        </div>
+      </div>
+
+      <!-- Controles superiores -->
+      <div class="top-controls">
+        <div class="chip small-muted">Entorno: <strong id="envLabel">/api</strong></div>
+        <button class="btn" id="beautifyBtn" title="Formatear JSON">Formatear JSON</button>
+        <button class="btn" id="toggleTheme">Tema</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Panel izquierdo: pruebas de endpoints -->
+      <section class="panel">
+        <div class="cards">
+          <!-- Endpoint: /client -->
+          <div class="card" aria-labelledby="clientTitle">
+            <div class="card-title"><strong id="clientTitle">POST /client</strong><span class="small-muted">Registrar cliente</span></div>
+            <label class="small" for="clientPayload">Carga JSON</label>
+            <textarea id="clientPayload" class="json">{
+  "name": "John Doe",
+  "country": "USA",
+  "monthlyIncome": 1200,
+  "viseClub": true,
+  "cardType": "Platinum"
+}</textarea>
+            <div class="controls">
+              <!-- Botones para enviar, copiar y resetear JSON -->
+              <button class="btn accent" onclick="callApi('client','clientPayload', this)">Enviar</button>
+              <button class="btn" onclick="copyPayload('clientPayload')">Copiar</button>
+              <button class="btn" onclick="resetPayload('clientPayload', 'client')">Reset</button>
+            </div>
+            <div class="small-muted" style="margin-top:8px">Tip: presiona <kbd>Ctrl+Enter</kbd> dentro del textarea para enviar.</div>
+          </div>
+
+          <!-- Endpoint: /purchase -->
+          <div class="card" aria-labelledby="purchaseTitle">
+            <div class="card-title"><strong id="purchaseTitle">POST /purchase</strong><span class="small-muted">Registrar compra</span></div>
+            <label class="small" for="purchasePayload">Carga JSON</label>
+            <textarea id="purchasePayload" class="json">{
+  "clientId": 1,
+  "amount": 250,
+  "currency": "USD",
+  "purchaseDate": "2025-09-20T14:30:00Z",
+  "purchaseCountry": "France"
+}</textarea>
+            <div class="controls">
+              <button class="btn accent" onclick="callApi('purchase','purchasePayload', this)">Enviar</button>
+              <button class="btn" onclick="copyPayload('purchasePayload')">Copiar</button>
+              <button class="btn" onclick="resetPayload('purchasePayload', 'purchase')">Reset</button>
+            </div>
+            <div class="small-muted" style="margin-top:8px">Valida que el JSON sea correcto antes de enviar.</div>
+          </div>
+        </div>
+
+        <!-- Historial de llamadas -->
+        <div style="margin-top:14px">
+          <div class="card" style="padding:12px">
+            <div class="card-title"><strong>Historial de llamadas</strong><button class="btn" onclick="clearHistory()">Borrar</button></div>
+            <div id="history" class="small-muted mono" style="margin-top:8px; max-height:120px; overflow:auto; background:var(--glass); padding:10px; border-radius:8px"></div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Panel derecho: respuesta de API -->
+      <aside class="right-col">
+        <div class="panel">
+          <div class="meta"><strong>Respuesta</strong><div class="small-muted" id="statusInfo">listo</div></div>
+          <pre id="out">HTTP 200
+
+{ "message": "Aquí aparecerá la respuesta..." }</pre>
+
+          <!-- Botones para manejar respuesta -->
+          <div style="display:flex; gap:8px; margin-top:10px">
+            <button class="btn" onclick="copyResponse()">Copiar respuesta</button>
+            <button class="btn" onclick="downloadResponse()">Descargar .json</button>
+            <div style="margin-left:auto" class="small-muted">Tiempo: <span id="timeMs">-</span> ms</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <strong>Información</strong>
+          <p class="small-muted" style="margin-top:8px">Este cliente es una herramienta ligera para probar los endpoints <code>/api/client</code> y <code>/api/purchase</code>. Incluye validación de JSON, formateador y historial local. No guarda datos en servidor.</p>
+        </div>
+
+      </aside>
+    </main>
+
+    <footer>
+      <div class="small-muted">VISE • Frontend mínimo — mejorado · &copy; <span id="year"></span></div>
+    </footer>
+  </div>
+
+<script>
+  // ========================
+  // Helpers generales
+  // ========================
+
+  // Devuelve fecha/hora en ISO
+  function now(){ return new Date().toISOString(); }
+
+  // Muestra año actual en el footer
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  // ========================
+  // Tema oscuro/claro
+  // ========================
+  const body = document.body;
+  document.getElementById('toggleTheme').addEventListener('click', ()=>{
+    body.classList.toggle('light'); // alterna la clase "light"
+  });
+
+  // ========================
+  // Enviar con Ctrl+Enter
+  // ========================
+  ['clientPayload','purchasePayload'].forEach(id=>{
+    const ta = document.getElementById(id);
+    ta.addEventListener('keydown', (ev)=>{
+      if((ev.ctrlKey||ev.metaKey) && ev.key === 'Enter'){
+        const path = id.includes('client') ? 'client' : 'purchase';
+        callApi(path, id);
+      }
+    });
+  });
+
+  // ========================
+  // Formatear JSON de payloads
+  // ========================
+  document.getElementById('beautifyBtn').addEventListener('click', ()=>{
+    ['clientPayload','purchasePayload'].forEach(id=>{
+      const ta = document.getElementById(id);
+      try{
+        // Intenta parsear y reimprimir bonito
+        ta.value = JSON.stringify(JSON.parse(ta.value), null, 2);
+      } catch(e){ /* si falla, se ignora */ }
+    });
+  });
+
+  // ========================
+  // Copiar / resetear payloads
+  // ========================
+  function copyPayload(id){
+    navigator.clipboard.writeText(document.getElementById(id).value)
+      .then(()=>alert('Copiado al portapapeles'));
+  }
+
+  // Guardamos payloads iniciales para reset
+  const initial = {
+    client: document.getElementById('clientPayload').value,
+    purchase: document.getElementById('purchasePayload').value
+  };
+  function resetPayload(id, key){ document.getElementById(id).value = initial[key]; }
+
+  // ========================
+  // Historial de llamadas
+  // ========================
+  function addHistory(entry){
+    const hist = document.getElementById('history');
+    const el = document.createElement('div');
+    el.textContent = entry;
+    hist.prepend(el); // añade al inicio
+  }
+  function clearHistory(){ document.getElementById('history').textContent = ''; }
+
+  // ========================
+  // Copiar / descargar respuesta
+  // ========================
+  function copyResponse(){
+    navigator.clipboard.writeText(document.getElementById('out').textContent)
+      .then(()=>alert('Respuesta copiada'));
+  }
+  function downloadResponse(){
+    const data = document.getElementById('out').textContent;
+    const blob = new Blob([data], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'response.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // ========================
+  // Llamadas al backend
+  // ========================
+  async function callApi(path, payloadId, btnEl=null){
+    const ta = document.getElementById(payloadId);
+    const out = document.getElementById('out');
+    const statusInfo = document.getElementById('statusInfo');
+    const timeEl = document.getElementById('timeMs');
+
+    // Intentar parsear JSON
+    let body;
+    try{
+      body = JSON.parse(ta.value);
+    }catch(err){
+      out.textContent = 'JSON inválido: ' + err.message;
+      statusInfo.textContent = 'JSON inválido';
+      return;
+    }
+
+    // UI feedback
+    const start = performance.now();
+    statusInfo.textContent = `Enviando ${path}...`;
+    if(btnEl) btnEl.disabled = true;
+
+    try{
+      // Enviamos POST al backend
+      const res = await fetch(`/api/${path}`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      const text = await res.text();
+
+      // Calculamos tiempo y mostramos respuesta
+      const ms = Math.round(performance.now()-start);
+      timeEl.textContent = ms;
+      out.textContent = `HTTP ${res.status} — ${res.statusText}\nTiempo: ${ms} ms\nFecha: ${now()}\n\n` + formatMaybeJson(text);
+      statusInfo.textContent = `Último: ${path} — ${res.status}`;
+
+      // Guardar en historial
+      addHistory(`${new Date().toLocaleString()} • ${path} • ${res.status} — ${ms}ms`);
+    }catch(e){
+      // Si falla la petición
+      const ms = Math.round(performance.now()-start);
+      timeEl.textContent = ms;
+      out.textContent = 'Error en la petición: ' + e.message;
+      statusInfo.textContent = 'Error';
+      addHistory(`${new Date().toLocaleString()} • ${path} • ERROR`);
+    }finally{
+      if(btnEl) btnEl.disabled = false;
+    }
+  }
+
+  // Intenta formatear respuesta como JSON si es válido
+  function formatMaybeJson(text){
+    try{
+      const j = JSON.parse(text);
+      return JSON.stringify(j, null, 2);
+    }catch(e){
+      return text;
+    }
+  }
+
+</script>
+</body>
+</html>

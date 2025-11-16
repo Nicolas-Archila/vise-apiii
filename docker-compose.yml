@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  # Servicio de base de datos PostgreSQL
+  db:
+    image: postgres:15-alpine       # Imagen ligera de Postgres
+    container_name: vise_db
+    environment:
+      POSTGRES_USER: vise           # Usuario de la DB
+      POSTGRES_PASSWORD: vise       # Contraseña de la DB
+      POSTGRES_DB: vise             # Nombre de la DB
+    ports:
+      - "5432:5432"                 # Exponemos PostgreSQL al host
+    volumes:
+      - db_data:/var/lib/postgresql/data # Volumen persistente para datos
+
+  # Servicio backend (API en Node.js / Express)
+  backend:
+    build: ./vise-api               # Construye la imagen desde carpeta ./vise-api
+    container_name: vise_backend
+    environment:
+      PORT: 3000                    # Puerto en el que escucha la API
+      DATABASE_URL: postgres://vise:vise@db:5432/vise # Cadena de conexión a la DB
+    depends_on:
+      - db                          # Espera a que la DB esté lista
+    ports:
+      - "3000:3000"                 # Mapea el puerto 3000 al host
+
+  # Servicio frontend (cliente en HTML + Nginx)
+  frontend:
+    build: ./frontend               # Construye imagen desde carpeta ./frontend
+    container_name: vise_frontend
+    depends_on:
+      - backend                     # Espera a que el backend esté listo
+    ports:
+      - "8080:80"                   # Exponemos Nginx en localhost:8080
+
+# Volumen persistente para la base de datos
+volumes:
+  db_data:
