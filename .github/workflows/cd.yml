@@ -73,6 +73,17 @@ jobs:
           app-name: ${{ secrets.AZURE_APP_NAME }}
           images: ${{ env.AZURE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
+      - name: Configure App Settings with Axiom
+        run: |
+          az webapp config appsettings set \
+            --name ${{ secrets.AZURE_APP_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --settings \
+              AXIOM_TOKEN="${{ secrets.AXIOM_TOKEN }}" \
+              AXIOM_DATASET="${{ secrets.AXIOM_DATASET }}" \
+              NODE_ENV="production" \
+              PORT="8080"
+
       - name: Restart App Service
         run: |
           az webapp restart --name ${{ secrets.AZURE_APP_NAME }} --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
